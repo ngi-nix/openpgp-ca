@@ -69,68 +69,50 @@
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         {
-          inherit (nixpkgsFor.${system}) hello;
+          inherit (nixpkgsFor.${system}) openpgp-ca;
         });
 
       # The default package for 'nix build'. This makes sense if the
       # flake provides only one package or there is a clear "main"
       # package.
-      defaultPackage = forAllSystems (system: self.packages.${system}.hello);
-
-      # A NixOS module, if applicable (e.g. if the package provides a system service).
-      nixosModules.hello =
-        { pkgs, ... }:
-        {
-          nixpkgs.overlays = [ self.overlay ];
-
-          environment.systemPackages = [ pkgs.hello ];
-
-          #systemd.services = { ... };
-        };
+      defaultPackage = forAllSystems (system: self.packages.${system}.openpgp-ca);
 
       # Tests run by 'nix flake check' and by Hydra.
       checks = forAllSystems (system: {
-        inherit (self.packages.${system}) hello;
+        inherit (self.packages.${system}) openpgp-ca;
 
         # Additional tests, if applicable.
-        test =
-          with nixpkgsFor.${system};
-          stdenv.mkDerivation {
-            name = "hello-test-${version}";
-
-            buildInputs = [ hello ];
-
-            unpackPhase = "true";
-
-            buildPhase = ''
-              echo 'running some integration tests'
-              [[ $(hello) = 'Hello, world!' ]]
-            '';
-
-            installPhase = "mkdir -p $out";
-          };
-
-        # A VM test of the NixOS module.
-        vmTest =
+        # Test if commands succeed
+        openpgp-ca-commands =
           with import (nixpkgs + "/nixos/lib/testing-python.nix") {
             inherit system;
           };
+          with self.packages.${system};
 
           makeTest {
             nodes = {
-              client = { ... }: {
-                imports = [ self.nixosModules.hello ];
+              machine_a = { ... }: {
+                environment.systemPackages = [ openpgp-ca ];
               };
             };
 
             testScript =
               ''
+                import time
                 start_all()
-                client.wait_for_unit("multi-user.target")
-                client.succeed("hello")
+                machine_a.execute("export OPENPGP_CA_DB=$(mktemp -d)/openpgp-ca.sqlite")
+                machine_a.execute("openpgp-ca ca init example.org")
+                machine_a.succeed("openpgp-ca user add --email alice@example.org --name 'Alice Adams'")
+                machine_a.succeed("openpgp-ca user add --email bob@example.org --name 'Bob Baker'")
+                machine_a.succeed("openpgp-ca user list")
+                machine_a.succeed("openpgp-ca user export --email alice@example.org")
+                machine_a.succeed("openpgp-ca wkd export /dev/null")
+                machine_a.succeed("openpgp-ca ca exportopenpgp-ca user list")
+                machine_a.shutdown()
               '';
           };
       });
 
     };
+
 }
