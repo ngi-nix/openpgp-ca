@@ -1,21 +1,20 @@
 {
-  description = "(insert short project description here)";
+  description = "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
 
   # Nixpkgs / NixOS version to use.
   inputs.nixpkgs.url = "nixpkgs/nixos-20.03";
 
   # Upstream source tree(s).
-  inputs.hello-src = { url = git+https://git.savannah.gnu.org/git/hello.git; flake = false; };
-  inputs.gnulib-src = { url = git+https://git.savannah.gnu.org/git/gnulib.git; flake = false; };
+  inputs.openpgp-ca-src = { url = "git+https://gitlab.com/openpgp-ca/openpgp-ca"; flake = false; };
 
-  outputs = { self, nixpkgs, hello-src, gnulib-src }:
+  outputs = { self, nixpkgs, openpgp-ca-src }:
     let
 
       # Generate a user-friendly version numer.
-      version = builtins.substring 0 8 hello-src.lastModifiedDate;
+      version = builtins.substring 0 8 openpgp-ca-src.lastModifiedDate;
 
       # System types to support.
-      supportedSystems = [ "x86_64-linux" ];
+      supportedSystems = [ "x86_64-darwin" "x86_64-linux" ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
       forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
@@ -30,22 +29,39 @@
       # A Nixpkgs overlay.
       overlay = final: prev: {
 
-        hello = with final; stdenv.mkDerivation rec {
-          name = "hello-${version}";
+        openpgp-ca = with final; pkgs.rustPlatform.buildRustPackage {
+          name = "openpgp-ca";
+          version = "${version}";
+          src = openpgp-ca-src;
+          patches = [./0001-Add-lock-file.patch];
 
-          src = hello-src;
+          buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg]
+          ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ]
+          ;
 
-          buildInputs = [ autoconf automake gettext gnulib perl gperf texinfo help2man ];
+          nativeBuildInputs = with pkgs; [ pkg-config ];
 
-          preConfigure = ''
-            mkdir -p .git # force BUILD_FROM_GIT
-            ./bootstrap --gnulib-srcdir=${gnulib-src} --no-git --skip-po
-          '';
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+
+          # Tests require setting up a gpg keychain in a nonstandard temporary
+          # `homedir`. This currently fails (on  my  machine) on gnupg's end
+          # such that those tests do not succeed.
+          # Following tests will fail:
+          #
+          # [
+          #   test_alice_authenticates_bob_centralized
+          #   test_alice_authenticates_bob_decentralized
+          #   test_bridge
+          # ];
+          doCheck = false;
 
           meta = {
-            homepage = "https://www.gnu.org/software/hello/";
-            description = "A program to show a familiar, friendly greeting";
+            homepage = "https://openpgp-ca.gitlab.io/openpgp-ca/";
+            description = "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
           };
+
+          cargoSha256 = "sha256-P8y3Fy6bXTH02omEbPmg5+s+B1ffKtUwxATPPLyNTtk=";
+
         };
 
       };
