@@ -64,13 +64,41 @@
 
         };
 
+        openpgp-ca-docker = with final; pkgs.dockerTools.buildImage {
+          name = "openpgp-ca";
+          tag = "latest";
+
+          # fromImage = someBaseImage;
+          # fromImageName = null;
+          # fromImageTag = "latest";
+
+          contents = pkgs.openpgp-ca;
+          runAsRoot = ''
+            #!${pkgs.runtimeShell}
+            mkdir -p /var/run/openpgp-ca
+          '';
+
+          config = {
+            Cmd = [ "/bin/openpgp-ca" ];
+            Env = [
+              "OPENPGP_CA_DB=/var/run/openpgp-ca/openpgp-ca.sqlite"
+            ];
+            WorkingDir = "/var/run/openpgp-ca";
+            Volumes = {
+              "/var/run/openpgp-ca" = {};
+            };
+          };
+        };
       };
 
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         {
           inherit (nixpkgsFor.${system}) openpgp-ca;
-        });
+        })
+        // {
+           x86_64-linux = { inherit (nixpkgsFor.x86_64-linux) openpgp-ca openpgp-ca-docker; };
+        };
 
       # The default package for 'nix build'. This makes sense if the
       # flake provides only one package or there is a clear "main"
