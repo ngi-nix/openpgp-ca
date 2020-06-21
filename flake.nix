@@ -33,7 +33,7 @@
           name = "openpgp-ca";
           version = "${version}";
           src = openpgp-ca-src;
-          patches = [./0001-Add-lock-file.patch];
+          patches = [./0001-Cargo.lock.patch];
 
           buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg]
           ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ]
