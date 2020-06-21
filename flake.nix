@@ -1,11 +1,18 @@
+# 22:45 - 4:30
+# 10:45 - 12:00
+
 {
-  description = "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
+  description =
+    "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
 
   # Nixpkgs / NixOS version to use.
   inputs.nixpkgs.url = "nixpkgs/nixos-20.03";
 
   # Upstream source tree(s).
-  inputs.openpgp-ca-src = { url = "git+https://gitlab.com/openpgp-ca/openpgp-ca"; flake = false; };
+  inputs.openpgp-ca-src = {
+    url = "git+https://gitlab.com/openpgp-ca/openpgp-ca";
+    flake = false;
+  };
 
   outputs = { self, nixpkgs, openpgp-ca-src }:
     let
@@ -17,93 +24,96 @@
       supportedSystems = [ "x86_64-darwin" "x86_64-linux" ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
+      forAllSystems = f:
+        nixpkgs.lib.genAttrs supportedSystems (system: f system);
 
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; overlays = [ self.overlay ]; });
+      nixpkgsFor = forAllSystems (system:
+        import nixpkgs {
+          inherit system;
+          overlays = [ self.overlay ];
+        });
 
-    in
-
-    {
+    in {
 
       # A Nixpkgs overlay.
       overlay = final: prev: {
 
-        openpgp-ca = with final; pkgs.rustPlatform.buildRustPackage {
-          name = "openpgp-ca";
-          version = "${version}";
-          src = openpgp-ca-src;
-          patches = [./0001-Cargo.lock.patch];
+        openpgp-ca = with final;
+          pkgs.rustPlatform.buildRustPackage {
+            name = "openpgp-ca";
+            version = "${version}";
+            src = openpgp-ca-src;
+            patches = [ ./0001-Cargo.lock.patch ];
 
-          buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg]
-          ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.Security ]
-          ;
+            buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg ]
+              ++ lib.optionals stdenv.isDarwin
+              [ darwin.apple_sdk.frameworks.Security ];
 
-          nativeBuildInputs = with pkgs; [ pkg-config ];
+            nativeBuildInputs = with pkgs; [ pkg-config ];
 
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
+            LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
 
-          # Tests require setting up a gpg keychain in a nonstandard temporary
-          # `homedir`. This currently fails (on  my  machine) on gnupg's end
-          # such that those tests do not succeed.
-          # Following tests will fail:
-          #
-          # [
-          #   test_alice_authenticates_bob_centralized
-          #   test_alice_authenticates_bob_decentralized
-          #   test_bridge
-          # ];
-          doCheck = false;
+            # Tests require setting up a gpg keychain in a nonstandard temporary
+            # `homedir`. This currently fails (on  my  machine) on gnupg's end
+            # such that those tests do not succeed.
+            # Following tests will fail:
+            #
+            # [
+            #   test_alice_authenticates_bob_centralized
+            #   test_alice_authenticates_bob_decentralized
+            #   test_bridge
+            # ];
+            doCheck = false;
 
-          meta = {
-            homepage = "https://openpgp-ca.gitlab.io/openpgp-ca/";
-            description = "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
+            meta = {
+              homepage = "https://openpgp-ca.gitlab.io/openpgp-ca/";
+              description =
+                "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
+            };
+
+            cargoSha256 = "sha256-P8y3Fy6bXTH02omEbPmg5+s+B1ffKtUwxATPPLyNTtk=";
+
           };
 
-          cargoSha256 = "sha256-P8y3Fy6bXTH02omEbPmg5+s+B1ffKtUwxATPPLyNTtk=";
+        openpgp-ca-docker = with final;
+          pkgs.dockerTools.buildImage {
+            name = "openpgp-ca";
+            tag = "latest";
 
-        };
+            # fromImage = someBaseImage;
+            # fromImageName = null;
+            # fromImageTag = "latest";
 
-        openpgp-ca-docker = with final; pkgs.dockerTools.buildImage {
-          name = "openpgp-ca";
-          tag = "latest";
+            contents = pkgs.openpgp-ca;
+            runAsRoot = ''
+              #!${pkgs.runtimeShell}
+              mkdir -p /var/run/openpgp-ca
+            '';
 
-          # fromImage = someBaseImage;
-          # fromImageName = null;
-          # fromImageTag = "latest";
-
-          contents = pkgs.openpgp-ca;
-          runAsRoot = ''
-            #!${pkgs.runtimeShell}
-            mkdir -p /var/run/openpgp-ca
-          '';
-
-          config = {
-            Cmd = [ "/bin/openpgp-ca" ];
-            Env = [
-              "OPENPGP_CA_DB=/var/run/openpgp-ca/openpgp-ca.sqlite"
-            ];
-            WorkingDir = "/var/run/openpgp-ca";
-            Volumes = {
-              "/var/run/openpgp-ca" = {};
+            config = {
+              Cmd = [ "/bin/openpgp-ca" ];
+              Env = [ "OPENPGP_CA_DB=/var/run/openpgp-ca/openpgp-ca.sqlite" ];
+              WorkingDir = "/var/run/openpgp-ca";
+              Volumes = { "/var/run/openpgp-ca" = { }; };
             };
           };
-        };
       };
 
       # Provide some binary packages for selected system types.
-      packages = forAllSystems (system:
-        {
-          inherit (nixpkgsFor.${system}) openpgp-ca;
-        })
+      packages =
+        forAllSystems (system: { inherit (nixpkgsFor.${system}) openpgp-ca; })
         // {
-           x86_64-linux = { inherit (nixpkgsFor.x86_64-linux) openpgp-ca openpgp-ca-docker; };
+          x86_64-linux = {
+            inherit (nixpkgsFor.x86_64-linux) openpgp-ca openpgp-ca-docker;
+          };
         };
 
       # The default package for 'nix build'. This makes sense if the
       # flake provides only one package or there is a clear "main"
       # package.
-      defaultPackage = forAllSystems (system: self.packages.${system}.openpgp-ca);
+      defaultPackage =
+        forAllSystems (system: self.packages.${system}.openpgp-ca);
 
       # Tests run by 'nix flake check' and by Hydra.
       checks = forAllSystems (system: {
@@ -124,20 +134,19 @@
               };
             };
 
-            testScript =
-              ''
-                import time
-                start_all()
-                machine_a.execute("export OPENPGP_CA_DB=$(mktemp -d)/openpgp-ca.sqlite")
-                machine_a.execute("openpgp-ca ca init example.org")
-                machine_a.succeed("openpgp-ca user add --email alice@example.org --name 'Alice Adams'")
-                machine_a.succeed("openpgp-ca user add --email bob@example.org --name 'Bob Baker'")
-                machine_a.succeed("openpgp-ca user list")
-                machine_a.succeed("openpgp-ca user export --email alice@example.org")
-                machine_a.succeed("openpgp-ca wkd export /dev/null")
-                machine_a.succeed("openpgp-ca ca exportopenpgp-ca user list")
-                machine_a.shutdown()
-              '';
+            testScript = ''
+              import time
+              start_all()
+              machine_a.execute("export OPENPGP_CA_DB=$(mktemp -d)/openpgp-ca.sqlite")
+              machine_a.execute("openpgp-ca ca init example.org")
+              machine_a.succeed("openpgp-ca user add --email alice@example.org --name 'Alice Adams'")
+              machine_a.succeed("openpgp-ca user add --email bob@example.org --name 'Bob Baker'")
+              machine_a.succeed("openpgp-ca user list")
+              machine_a.succeed("openpgp-ca user export --email alice@example.org")
+              machine_a.succeed("openpgp-ca wkd export /dev/null")
+              machine_a.succeed("openpgp-ca ca exportopenpgp-ca user list")
+              machine_a.shutdown()
+            '';
           };
       });
 
