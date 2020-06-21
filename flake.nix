@@ -1,6 +1,3 @@
-# 22:45 - 4:30
-# 10:45 - 12:00
-
 {
   description =
     "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
@@ -37,14 +34,19 @@
     in {
 
       # A Nixpkgs overlay.
-      overlay = final: prev: {
+      overlay = final: prev: rec {
+        finalSrc = final.pkgs.runCommand "openpgp-ca-src-with-lock-file" {} ''
+          mkdir $out
+          ls ${openpgp-ca-src}
+          cp -r ${openpgp-ca-src}/* $out
+          cp ${./Cargo.lock} $out/Cargo.lock
+        '';
 
         openpgp-ca = with final;
           pkgs.rustPlatform.buildRustPackage {
             name = "openpgp-ca";
             version = "${version}";
-            src = openpgp-ca-src;
-            patches = [ ./0001-Cargo.lock.patch ];
+	          src = finalSrc;
 
             buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg ]
               ++ lib.optionals stdenv.isDarwin
@@ -116,7 +118,7 @@
         forAllSystems (system: self.packages.${system}.openpgp-ca);
 
       # Tests run by 'nix flake check' and by Hydra.
-      checks = forAllSystems (system: {
+      checks = forAllSystems (system: if system == "x86_64-darwin" then {} else {
         inherit (self.packages.${system}) openpgp-ca;
 
         # Additional tests, if applicable.
