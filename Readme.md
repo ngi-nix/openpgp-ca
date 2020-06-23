@@ -14,10 +14,9 @@ As currently `Cargo.lock` is `.gitignore`d upstream, a patch locking the depende
 $ nix dev-shell
 $ (shell) pushd <path to repo>
 $ (shell) cargo generate-lockfile
-$ (shell) git diff --no-index -- /dev/null  Cargo.lock > Cargo.lock.patch
 $ (shell) popd
 $ (shell) exit
-$ mv <path to repo>/Cargo.lock.patch 0001-Cargo.lock.patch
+$ mv <path to repo>/Cargo.lock Cargo.lock
 $ nix flake update
 ```
 
