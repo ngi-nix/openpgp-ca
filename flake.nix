@@ -138,13 +138,21 @@
 
             testScript = ''
               start_all()
+
               machine_a.execute("openpgp-ca -d /tmp/openpgp-ca.sqlite ca init example.org")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email alice@example.org --name 'Alice Adams'")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email bob@example.org --name 'Bob Baker'")
+              machine_a.succeed(
+                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email alice@example.org --name 'Alice Adams'"
+              )
+              machine_a.succeed(
+                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email bob@example.org --name 'Bob Baker'"
+              )
               machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user list")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user export --email alice@example.org")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite wkd export /dev/null")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite ca exportopenpgp-ca user list")
+              machine_a.succeed(
+                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user export --email alice@example.org"
+              )
+              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite wkd export /tmp/export")
+              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite ca export")
+
               machine_a.shutdown()
             '';
           };
