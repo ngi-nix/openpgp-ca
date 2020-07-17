@@ -35,18 +35,12 @@
 
       # A Nixpkgs overlay.
       overlay = final: prev: rec {
-        finalSrc = final.pkgs.runCommand "openpgp-ca-src-with-lock-file" {} ''
-          mkdir $out
-          ls ${openpgp-ca-src}
-          cp -r ${openpgp-ca-src}/* $out
-          cp ${./Cargo.lock} $out/Cargo.lock
-        '';
 
         openpgp-ca = with final;
           pkgs.rustPlatform.buildRustPackage {
             name = "openpgp-ca";
             version = "${version}";
-	          src = finalSrc;
+            src = openpgp-ca-src;
 
             buildInputs = [ nettle clang gmp openssl capnproto sqlite gnupg ]
               ++ lib.optionals stdenv.isDarwin
@@ -74,7 +68,7 @@
                 "OpenPGP CA is a tool for managing OpenPGP keys within an organization.";
             };
 
-            cargoSha256 = "sha256-P8y3Fy6bXTH02omEbPmg5+s+B1ffKtUwxATPPLyNTtk=";
+            cargoSha256 = "sha256-L6l5S2HQrvSUg42OEYTLWg/mHUkFbUXrMsefcpVmer4";
 
           };
 
@@ -118,45 +112,48 @@
         forAllSystems (system: self.packages.${system}.openpgp-ca);
 
       # Tests run by 'nix flake check' and by Hydra.
-      checks = forAllSystems (system: if system == "x86_64-darwin" then {} else {
-        inherit (self.packages.${system}) openpgp-ca;
+      checks = forAllSystems (system:
+        if system == "x86_64-darwin" then
+          { }
+        else {
+          inherit (self.packages.${system}) openpgp-ca;
 
-        # Additional tests, if applicable.
-        # Test if commands succeed
-        openpgp-ca-commands =
-          with import (nixpkgs + "/nixos/lib/testing-python.nix") {
-            inherit system;
-          };
-          with self.packages.${system};
-
-          makeTest {
-            nodes = {
-              machine_a = { ... }: {
-                environment.systemPackages = [ openpgp-ca ];
-              };
+          # Additional tests, if applicable.
+          # Test if commands succeed
+          openpgp-ca-commands =
+            with import (nixpkgs + "/nixos/lib/testing-python.nix") {
+              inherit system;
             };
+            with self.packages.${system};
 
-            testScript = ''
-              start_all()
+            makeTest {
+              nodes = {
+                machine_a = { ... }: {
+                  environment.systemPackages = [ openpgp-ca ];
+                };
+              };
 
-              machine_a.execute("openpgp-ca -d /tmp/openpgp-ca.sqlite ca init example.org")
-              machine_a.succeed(
-                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email alice@example.org --name 'Alice Adams'"
-              )
-              machine_a.succeed(
-                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email bob@example.org --name 'Bob Baker'"
-              )
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user list")
-              machine_a.succeed(
-                  "openpgp-ca -d /tmp/openpgp-ca.sqlite user export --email alice@example.org"
-              )
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite wkd export /tmp/export")
-              machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite ca export")
+              testScript = ''
+                start_all()
 
-              machine_a.shutdown()
-            '';
-          };
-      });
+                machine_a.execute("openpgp-ca -d /tmp/openpgp-ca.sqlite ca init example.org")
+                machine_a.succeed(
+                    "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email alice@example.org --name 'Alice Adams'"
+                )
+                machine_a.succeed(
+                    "openpgp-ca -d /tmp/openpgp-ca.sqlite user add --email bob@example.org --name 'Bob Baker'"
+                )
+                machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite user list")
+                machine_a.succeed(
+                    "openpgp-ca -d /tmp/openpgp-ca.sqlite user export --email alice@example.org"
+                )
+                machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite wkd export /tmp/export")
+                machine_a.succeed("openpgp-ca -d /tmp/openpgp-ca.sqlite ca export")
+
+                machine_a.shutdown()
+              '';
+            };
+        });
 
     };
 

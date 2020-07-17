@@ -1,14 +1,12 @@
 {
   "nodes": {
     "nixpkgs": {
-      "info": {
-        "lastModified": 1592495204,
-        "narHash": "sha256-+AdAIr4FJCb2ltFY1YsUQYrloBEB8l/snAAmwLvCRhA="
-      },
       "locked": {
+        "lastModified": 1594884457,
+        "narHash": "sha256-o7fOmlRZgLVOcG87GZMEZbXrJ93xVI5TGEK2rHKv8+c=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2b417708c282d84316366f4125b00b29c49df10f",
+        "rev": "76adfc180c0e4bad011e33ee73fba2a56e1f212b",
         "type": "github"
       },
       "original": {
@@ -19,14 +17,12 @@
     },
     "openpgp-ca-src": {
       "flake": false,
-      "info": {
-        "lastModified": 1591973488,
-        "narHash": "sha256-5oA99J6Uv6uzYNtwKTjOdRserN52t4KLfwK9C/kQk1I=",
-        "revCount": 373
-      },
       "locked": {
+        "lastModified": 1594982136,
+        "narHash": "sha256-nvL8YAsPvsJCCR294u9KkqrsObvgNZ/gnRgmCiJCQII=",
         "ref": "master",
-        "rev": "d04c03cbb4eebcbbf2c59935a3ccec3be275c0a9",
+        "rev": "8538d0db2ea57a89aca8fe95ed1f7ce6e99d02b3",
+        "revCount": 401,
         "type": "git",
         "url": "https://gitlab.com/openpgp-ca/openpgp-ca"
       },
@@ -43,5 +39,5 @@
     }
   },
   "root": "root",
-  "version": 5
+  "version": 7
 }

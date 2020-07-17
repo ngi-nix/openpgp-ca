@@ -6,18 +6,26 @@ The openpgp-ca is exported as default package and  as `openpgp-ca` attribute.
 
 Provided are builds for both linux and macos.
 
-## Updating
+## Update instructions
 
-As currently `Cargo.lock` is `.gitignore`d upstream, a patch locking the dependencies declared in upstream's `Cargo.toml` is included and must be updated together with the sources. The update process thus includes creating an updated patch first.
+To update the flake to track new releases of `openpgp-ca` run:
 
 ```
-$ nix dev-shell
-$ (shell) pushd <path to repo>
-$ (shell) cargo generate-lockfile
-$ (shell) popd
-$ (shell) exit
-$ mv <path to repo>/Cargo.lock Cargo.lock
-$ nix flake update
+$ nix flake update --update-input openpgp-ca-src
 ```
 
-Note: this should no longer be necessary as upstream starts including that lockfile.
+then update the `cargoSha256`.
+
+To update the dependencies used, i.e. the nixpkgs version, run
+
+```
+$ nix flake update --update-input nixpkgs
+```
+
+or run
+
+```
+$ nix flake update --recreate-lock-file
+```
+
+to update everything.
